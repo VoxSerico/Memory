@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Memory</title>
+	<link rel="icon" href="favicon.png">
+	<style>
+		body {
+			--red: hsl(0, 50%, 26.1%);
+			--green: hsl(120, 50%, 20%);
+			background: var(--red);
+			margin: 0;
+			padding: 0.5em;
+			box-sizing: border-box;
+			height: 100vh;
+			overflow: hidden;
+			display: grid;
+			align-content: center;
+		}
+
+		#newgame {
+			position: absolute;
+			display: grid;
+			place-content: center;
+			aspect-ratio: 1/1;
+			left: 50vw;
+			bottom: 10vh;
+			translate: -50%;
+			font-size: 11vh;
+			padding: 0.2em;
+			line-height: 1;
+			border: 0.075em solid hsl(0, 0%, 100%);
+			border-radius: .5em;
+			cursor: pointer;
+			box-shadow: 0em 0em 1.25em 0.1em #7499ff;
+			background: #3466ee;
+			color: lime; 
+			text-shadow: 0 0 3vh lime;
+			opacity: 0%;
+			pointer-events: none;
+
+			& svg {
+				width: 11vh;
+				height: 11vh;
+				translate: 0.5vh;
+			}
+			&.hidden{
+				pointer-events: none;
+				display: none; /* Prevent tab focus */
+			}
+
+			&:not(.hidden) {
+				animation: pop-in 0.5s 1.0s cubic-bezier(.82, 1.71, .59, .81) forwards;
+			}
+		}
+
+		@keyframes pop-in {
+			from {
+				transform: translateY(50%);
+				opacity: 0%;
+				pointer-events: none;
+			}
+
+			99% {
+				pointer-events: none;
+			}
+
+			to {
+				opacity: 100%;
+				transform: translateY(0%);
+				pointer-events: auto;
+			}
+		}
+
+		#memory {
+			display: grid;
+			gap: calc(8em / var(--columns, 1));
+			align-items: center;
+			width: 100%;
+			height: auto;
+			grid-template-columns: repeat(var(--columns, 2), 1fr);
+			grid-template-rows: none;
+			grid-auto-rows: 1fr;
+		}
+
+		card-flip {
+			width: 100%;
+			height: auto;
+			aspect-ratio: 1/1;
+			cursor: pointer;
+			pointer-events: all;
+			user-select: none;
+
+			&::part(card) {
+				border-radius: 10cqh;
+				background-color: white;
+				border: 4cqh outset white;
+				overflow: hidden;
+			}
+
+			&::part(front) {
+				background: url('data:image/svg+xml,<svg viewBox="0 0 100 100" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="Wave" width="24" height="10" fill="%233466ee" patternUnits="userSpaceOnUse" preserveAspectRatio="xMidYMid" patternTransform="rotate(-45) scale(0.8)"><path d="m12-2c-2.8333 0-4.832 1.4355-6.582 2.6855-1.75 1.25-3.2513 2.3145-5.418 2.3145v2c2.8333 0 4.832-1.4355 6.582-2.6855 1.75-1.25 3.2513-2.3145 5.418-2.3145 2.1667 0 3.668 1.0645 5.418 2.3145 1.75 1.25 3.7487 2.6855 6.582 2.6855v-2c-2.1667 0-3.668-1.0645-5.418-2.3145-1.75-1.25-3.7487-2.6855-6.582-2.6855z"/><path d="m12 3c-2.8333 0-4.832 1.4355-6.582 2.6855-1.75 1.25-3.2513 2.3145-5.418 2.3145v2c2.8333 0 4.832-1.4355 6.582-2.6855 1.75-1.25 3.2513-2.3145 5.418-2.3145 2.1667 0 3.668 1.0645 5.418 2.3145 1.75 1.25 3.7487 2.6855 6.582 2.6855v-2c-2.1667 0-3.668-1.0645-5.418-2.3145-1.75-1.25-3.7487-2.6855-6.582-2.6855z"/><path d="m12 8c-2.8333 0-4.832 1.4355-6.582 2.6855-1.75 1.25-3.2513 2.3145-5.418 2.3145v2c2.8333 0 4.832-1.4355 6.582-2.6855 1.75-1.25 3.2513-2.3145 5.418-2.3145 2.1667 0 3.668 1.0645 5.418 2.3145s3.7487 2.6855 6.582 2.6855v-2c-2.1667 0-3.668-1.0645-5.418-2.3145-1.75-1.25-3.7487-2.6855-6.582-2.6855z"/></pattern></defs><rect width="100" height="100" fill="url(%23Wave)"/></svg>') content-box, white padding-box;
+			}
+
+			& div {
+				font-size: 70cqh;
+				line-height: 1;
+			}
+
+			&.matched {
+				pointer-events: none;
+
+				&::part(front) {
+					transition-property: opacity;
+					transition-delay: 0.5s;
+					opacity: 0;
+				}
+
+				&::part(back) {
+					transition-property: background, border-color;
+					transition-delay: 0.5s;
+					transition-duration: 1s;
+					background: transparent padding-box;
+					border-color: transparent;
+				}
+			}
+
+		}
+
+		#mainmenu {
+			background-color: #fff;
+			border-radius: 1em;
+			/* padding-inline: 1em; */
+			box-shadow: 0 0 1em 0.5em rgb(0 0 0 / 50%);
+			border: 0.3em outset white;
+			white-space-collapse: collapse;
+
+			&::backdrop {
+				backdrop-filter: blur(5px);
+			}
+
+			& form {
+				display: flex;
+				gap: 1vw;
+			}
+
+			& button {
+				font-size: 6vw;
+				aspect-ratio: 1/1;
+			}
+		}
+	</style>
+	<script type="module">
+		//@ts-check
+		"use strict";
+
+		class SoundEffects {
+			/** @type {AudioContext?} */
+			#context;
+			/** @type {GainNode?} */
+			#gain;
+
+			// Don't want to await on every future audio node, use this single promise and resolve function instead.
+			#initialized;
+			#resolveInitizalization;
+			constructor() {
+				// https://html.spec.whatwg.org/#activation-triggering-input-event
+				for (const event of /** @type {(keyof DocumentEventMap)[]} */(["mousedown", "touchend"])) {
+					document.addEventListener(event, () => { this.initialize(); }, { once: true, capture: true });
+				}
+				this.#initialized = new Promise(resolve => {
+					this.#resolveInitizalization = resolve;
+				});
+			}
+
+			initialize() {
+				if (this.#context) return;
+				const context = this.#context = new AudioContext();
+				const gain = this.#gain = context.createGain();
+				gain.connect(context.destination);
+				gain.gain.value = this.#volume ?? 1;
+
+				// AudioContext might need to be manually resumed?
+				// https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/state#resuming_interrupted_play_states_in_ios_safari
+				// Can't find any other sources, leaving it out.
+				context.addEventListener("statechange", async (event) => {
+					console.debug(`AudioContext state change to: ${context.state}`);
+				});
+				this.#resolveInitizalization();
+			}
+
+			/** @type {Map<string, AudioBuffer>} */
+			#buffers = new Map();
+
+			/** @param {string} url */
+			async load(url) {
+				if (this.#buffers.has(url)) throw new Error(`Sound effect "${url}" already exists!`);
+				const response = await fetch(url);
+				if (!response.ok) throw new Error(`${response.statusText} (${response.url})`);
+				const data = await response.arrayBuffer();
+				await this.#initialized;
+				if (!this.#context) throw new Error();
+				const buffer = await this.#context.decodeAudioData(data);
+				this.#buffers.set(url, buffer);
+			}
+
+			play(url) {
+				if (!this.#context) {
+					console.info(this.constructor.name + " is not initialized!");
+					return;
+				};
+				let buffer = this.#buffers.get(url);
+				if (!buffer) {
+					console.warn(`Sound is not loaded: ${url}`);
+					return;
+				};
+				const soundEffect = this.#context.createBufferSource();
+				soundEffect.buffer = buffer;
+				soundEffect.connect(/**@type {GainNode}*/(this.#gain));
+				soundEffect.start();
+				return soundEffect;
+			}
+
+			#volume;
+
+			get volume() {
+				if (!this.#gain) return this.#volume;
+				return this.#gain.gain.value;
+			}
+			set volume(value) {
+				if (!this.#gain) {
+					this.#volume = value;
+				} else {
+					this.#gain.gain.value = value;
+				}
+			}
+		}
+
+		const sfx = new SoundEffects();
+		const sounds = {
+			flip400: "data:audio/mpeg;base64,//OIxAAAAAAAAAAAAFhpbmcAAAAPAAAADgAACvgAHR0dHR0dHTo6Ojo6OjpMTExMTExMX19fX19fX3V1dXV1dXWDg4ODg4ODkpKSkpKSkqCgoKCgoKCgs7Ozs7Ozs9DQ0NDQ0NDf39/f39/f7e3t7e3t7fz8/Pz8/Pz/////////AAAAPExBTUUzLjEwMARQAAAAAAAAAAAVCCQEQSEAAcwAAAr45So0egAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//OIxAAQAAJOXUEAAG3Gw2o5GK9D8QAgAwfB8H+sH8QAgCAPvUciCXP6ncHw/9YPh//wQ5RH+CAIBj4DB/+UBA5/qBD5d/B8+oEPg+94eId3Z3Z4dnf+/WWWBsSEqmI3ycIYKM60JLkhxNjzopluaBOrSjhNr9rbaObKU7QhywjCQnmYR7nwdiqV6uOU/GJUHSP8lBarSnQR8wlc0N6RUhXuKCdK4vkIuDeqS6KeyaciE4WkIY3rGeBeZhYl2unNXndZCbyN9Ije4vTRiKtoPxg9T9gQ7saoZDvQh02ragqr0oqoCNUkrPARjPKoZHT1X7VKkeSRIT/wnu4bxXuUZnriJSXdq7xCmoyvnP3nVkCGb0V+5RX7a2NcFndLd9Wl//OIxNNBg/5nH494Aa49F25PGdWOSkY9WhLr2nfq9YtF08Q1jU7xEIY0diRM0CseDDiXlYp4bxecnlfHjSzqlWaZmN/bJIUE5iE8r84H4bKyuSB1K7pTfcUR25edrx/EdSmIQJBIKwPEyrKSJQ9oEw0MTc8XwcRtug9lqQyGMTfFNt9Ou7pqty64h893umGO4mWfzU9c9TX/D1at8nGyyu/5rj6/iW0/rtkX93PUt9+yFztS9KJh6zpbE8cTxfxzUs42TDYmZ55mr+u4mnSyouotINqa8qsoyrpld5ymVFtljBdeQy3ufkkOhibYxyFwRaGE7BfB+lKPUMERdJQCaRl46MrUFzz1GqE9jhODQk1RmDBUFSd4gRpj1D5GgZgJ//NYxOAmg8J6/8xYAc8tiR1fV3lCTfdKMlG9LrCAkZXDYoSicKogowVAO8kYKJ0gJwLQi5nidCvRU0XECpAKIAPhI3aBlv9u2LXORi4js/2dYzPT3uUa+9A/YLSxs/P21x/4jPD+n/zcvytTe4deCJLaszbrDDUENdm6cqMIYVNp6TpAnRRpM8+kLMgQZ3mKhlRrLGgXccRUCs/Pxe80P8N9SEMvlKBI+MJMqoCRTCAso20p//NYxO0xfAqDHnpNHbsHtKAshvd0baQZE0AYKz5qYBi40vevuyyAIFoQ0IiCZKjJDloH0fsDgQYRMyUBYfkBhE7E10LSkjYtTZiCBtj9xH2ndtKFfYd3esZqx5aMbHKyol6f3de+2t3a2gzNd9b/94aC98VFeydR0nn9yvRAzGZp8u9ISnhYkphGw9IJsSeynbVqeIm4pENFCiDd3M6x8rg43M9Wctifah9rhrSoQUCyd2cy//NoxM4rFAaXHmJMzYVZSU2+VdJe0Y3Xpn+Y3yMtw5sNtTqWV5n/l5lZnGe0j5b/x/mtpNPte/Ome3D9u56llYeZoflSzcypyeyr/aR8tyylKeU79KL/MqdRChw1k265MRdVgSSPiDDWF86QVHhmggExEkilGdpzsujLnrwNiGAo9naAKYXDXuzBQQKJnA4WGM/0tuVhMyeZmb83mcgvC+85U/AwMWOaC3ehoG64cWxIQxUuFEVSIJOm/7MPSZlZtUhqyyd3IvY+wErGxSZVc/lV6tY//M86//NIxOwgA8afHHmGnFkf5nP7V4TIyic/kZv/8uE18vz8q5FMzWaHrxgEUHGOG5NoZOtuXMBVKCt/UU0blju8QR9XZAuXO2XGQqH55acg2G56cmBtwg42YiCWZOhGJxlRqO21rSA5OT091oyMhGZ46MgEBM0IoioFJ7cE3A25BTMlJVJFVVLzq7HK+XFyfMrC//NIxO8lPAabHsMGlMpY503Rg8p6mkB9jEeeikUkhblzn60jLKZtJac2/2lmZNc7W25VOpG5r0s/U6MYsKDSyRIgz60GK5oO//x5xtpxl1G4CWCJCgEM17bEIfQSYcjYzaI24IP21gIpinE6SIHNwg1fuEDiDGgc/ck1ZexNKaZzJSzLqIISmaGiHDOBC5eC//NIxN0k67qmXmGHYQOB8kUZ6y3POQbGeKcHXjQeTI2UCRCtMC7uHdjMcmTJ14fbaLT9p91uvt+1ZsRuyT//jLb2/767RF/Xr4138/e+CIc+2y2WU16exiiCoHTVIlmKp0ZbNVSc+8DXIJgJUhaxD0x4UVsnHCHkxDj8S5mkUAJqcPGLjz0/zP0D1OjTtQcT//NYxMwmC/amXkjNNCEEAiAXLhgZMesuRjqmb7AoItN7m3bpJobvHmdlwMw8BNwvgrAUYjQAwFWD8F3LELQPWaRaGmvGMQhJoWuGRFiRC9Hgbo60QCkBZjXCGHiLgOcWskBbRxmYTQhaJJ2bBSFjLYsqOxP0woTjRCyo2xYbFlVqyZJoULAPWoSXjkPEubcqFW8uwI04x6EypmhrcFWoDPXnFX4UGkIuEWsadL3JOHZ3y9wn//OIxNpFrA6nHNPTOR8LqcmL3OmhaQXsPOXhdKt6y3sL1RdZXd+zhOGWvSco/+475oEbBN0KJJ8Mbklk2FkJQqfIBoUiYdJ1LHJ3JbacCSlYFw9xurvPT4CpYXN8OSMSbrWnjUa0ieRQJaaBJ7zTq+OV5JSiYnKiRiUlLlkoyNtFeZTXPbo5rU8mWbC9hHdmE8LarVZKZnYg5lYx2SuZUejy1LsjGUro9+i/2+n+ZWRaVLzOV7tW7GX6zVaW7elDTqdqUVUMhGhDXBvbGyVpHCVGiUp1SXGkQWEzVlSVlChQsynFChRIkMZUsiaXQuIpVTW/+oVY1WNG+lS4GAqqqoCyClQCNmYmomcpkza+snVL4vsGNALqzSl0MY3oUvXM//NIxNYgu+qtlmGE3d10ylLtRql9TStylNVqslP1ZerVLVv6GN5c3qHRacBRWlVLRSo4i4qXFQkZI52W6lK7cc6qFmJDqElEsETSKRCS+1UNeO+WqoQy4RGVmlVLjAgI6v/xjVVWdWMx7QCPZj1jGq1Yyo31S2b//1/6sVV4zMy7MzMzf/7dLh/V/qrxi/Zj//NIxNYfI/6RvkjLNSlMYU/No/zZnqUpZW//KX/76lYtvoZ/lY0K40UqTExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NIxNwdS/ZmXkjFPaqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MYxOgAAAP8AAAAAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+		};
+		for (const [key, value] of Object.entries(sounds)) {
+			sfx.load(value);
+		}
+
+		class CardFlip extends HTMLElement {
+			#flipped = false;
+
+			#liftAnimation;
+			#flipAnimation;
+			#shadowAnimation;
+			#keyframes;
+
+			#shadowRoot;
+			constructor(params) {
+				super();
+			}
+
+			// Transform animations for JS-instantiated elements break on firefox if created in the constructor
+			connectedCallback() {
+				if (this.shadowRoot) return;
+				this.#shadowRoot = this.attachShadow({ mode: "open" });
+				const template = /**@type {HTMLTemplateElement}*/(document.getElementById("card-flip-template"));
+				if (!template || !template.content) throw new Error();
+				this.#shadowRoot.appendChild(template.content.cloneNode(true));
+
+				const flipElement = this.#shadowRoot.querySelector("#flip");
+				const liftElement = this.#shadowRoot.querySelector("#lift");
+				const frontElement = this.#shadowRoot.querySelector("#front");
+
+				/**@type {KeyframeAnimationOptions}*/
+				const options = {
+					duration: 400,
+					iterations: 1,
+					fill: "both",
+					easing: "cubic-bezier(0.42, 0, 0.1, 0.25)",
+				};
+				this.#keyframes = {
+					flip: new KeyframeEffect(flipElement, {
+						rotate: ["y 0turn", "y 0.5turn"],
+					}, options),
+					flop: new KeyframeEffect(flipElement, {
+						rotate: ["y 0.5turn", "y 1.0turn"],
+					}, options),
+					lift: new KeyframeEffect(
+						liftElement, {
+						transform: [
+							"rotateY(-0.25turn) translateX(0%) rotateY(0.25turn)",
+							"rotateY(-0.25turn) translateX(100%) rotateY(0.25turn)",
+							"rotateY(-0.25turn) translateX(0%) rotateY(0.25turn)"
+						],
+					}, options),
+					shadow: new KeyframeEffect(
+						frontElement, {
+						filter: [
+							"drop-shadow(0.5em 0.5em 0.25em rgba(0, 0, 0, 0.5))",
+							"drop-shadow(0em 1.5em 1em rgba(0, 0, 0, 0.1))",
+							"drop-shadow(-0.5em 0.5em 0.25em rgba(0, 0, 0, 0.5))",
+						],
+					}, options)
+				};
+
+				this.#flipAnimation = new Animation(this.#flipped ? this.#keyframes.flop : this.#keyframes.flip);
+				this.#liftAnimation = new Animation(this.#keyframes.lift);
+				this.#shadowAnimation = new Animation(this.#keyframes.shadow);
+				this.#shadowAnimation.currentTime = 0;
+				this.#flipAnimation.currentTime = 0;
+			}
+			/** Animate flipping of the card.
+			 * @param {boolean} [force] Flip to a specific side.
+			 * @returns {Promise<boolean>} Returns the flipped state
+			 */
+			flip(force = !this.#flipped) {
+				if (force == this.#flipped) return Promise.resolve(this.#flipped);
+
+				if (this.#shadowRoot) {
+					if (this.#flipAnimation.playState == "running") {
+						this.#flipAnimation.reverse();
+						this.#liftAnimation.reverse();
+						this.#shadowAnimation.reverse();
+					} else {
+						this.#flipAnimation.effect = this.#flipped ? this.#keyframes.flop : this.#keyframes.flip;
+						// Play forward, but keep the animation speed which may have been changed in the browser's dev tools.
+						this.#flipAnimation.updatePlaybackRate(Math.abs(this.#flipAnimation.playbackRate));
+						this.#flipAnimation.play();
+						this.#liftAnimation.play();
+						this.#shadowAnimation.updatePlaybackRate(this.#flipped ? -1 : 1);
+						this.#shadowAnimation.play();
+					}
+				}
+				this.#flipped = force; // Prevents the attribute's animation skip.
+				this.toggleAttribute("flipped", force);
+				return this.#flipAnimation ? this.#flipAnimation.finished.then((anim) => this.#flipped) : Promise.resolve(this.#flipped);
+			}
+
+			static observedAttributes = ["flipped"];
+			attributeChangedCallback(name, oldValue, newValue) {
+				this.flipped = newValue != null;
+			}
+			get flipped() {
+				return this.#flipped;
+			}
+			// Instantly flip sides when set
+			set flipped(value) {
+				if (this.#flipped == value) return;
+				if (this.#shadowRoot) {
+					this.#flipAnimation.effect = this.#flipped ? this.#keyframes.flop : this.#keyframes.flip;
+					this.#shadowAnimation.finish();
+					this.#flipAnimation.finish();
+				}
+				this.#flipped = value;
+			}
+		}
+		customElements.define("card-flip", CardFlip);
+
+		/** @template {CardFlip} T */
+		class MemoryGame {
+			/** @typedef {[T, T]} Pair */
+			/** @readonly @type {Map<T, Pair>} */
+			#pairings = new Map();
+			/** @type {T?} */
+			#first = null;
+			/** @type {T?} */
+			#second = null;
+
+			/** @param {Pair[]} pairs */
+			constructor(pairs) {
+				for (const pair of pairs) {
+					this.#pairings.set(pair[0], pair);
+					this.#pairings.set(pair[1], pair);
+				}
+			}
+
+			/**
+			 * @param {T} card
+			 * @returns {void}
+			 */
+			reveal(card) {
+				// Hide the previous attempt
+				if (this.#second) {
+					this.#first?.flip(false);
+					this.#second.flip(false);
+					this.#first = null;
+					this.#second = null;
+				}
+
+				// Invalid move
+				if (card == this.#first) {
+					return;
+				}
+
+				card.flip(true);
+				sfx.play(sounds.flip400);
+
+				if (!this.#first) {
+					this.#first = card;
+					return;
+				}
+
+				this.#second = card;
+
+				// Check for a mismatching pair
+				if (this.#pairings.get(card) != this.#pairings.get(this.#first)) {
+					return;
+				}
+
+				this.#pairings.delete(this.#first);
+				this.#pairings.delete(card);
+				for (const card of [this.#first, this.#second]) {
+					card.classList.add("matched");
+				}
+				this.#first = null;
+				this.#second = null;
+
+				if (this.#pairings.size == 0) {
+					newGameButton.classList.remove("hidden");
+				}
+			}
+		}
+
+		const board = /**@type {HTMLElement}*/ (document.getElementById("memory"));
+
+		function makeACard(icon) {
+			const card = /**@type {CardFlip}*/(document.createElement("card-flip"));
+			const div = card.appendChild(document.createElement("div"));
+			div.append(icon);
+			return card;
+		}
+
+		/**
+		 * @template {any[]} T 
+		 * @param {T} list
+		 * @returns {T}
+		 */
+		function shuffle(list) {
+			for (let i = list.length - 1; i >= 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1)); // 0 <= Math.random() < 1
+				[list[i], list[j]] = [list[j], list[i]];
+			}
+			return list;
+		}
+
+		function newGame(numPairs = 6) {
+			if (!board) throw new Error();
+			board.replaceChildren();
+
+			const icons = ["🍇", "🍈", "🍉", "🍊", "🍋", "🍌", "🍍", "🥭", "🍎", "🍏", "🍐", "🍑", "🍒", "🍓", "🥝", "🥥"]; // 16 st
+			const cards = [];
+			shuffle(icons);
+			if (numPairs < icons.length) {
+				icons.length = numPairs;
+			} else {
+				console.warn(`Available pairs (${icons.length}) are fewer than desired! (${numPairs})`);
+			}
+			icons.length = Math.min(icons.length, numPairs);
+			if (icons.length < 1) throw new Error("No cards!");
+			const game = new MemoryGame(
+				icons.map(icon => {
+					const pair = [makeACard(icon), makeACard(icon)];
+					cards.push(...pair);
+					return /**@type {Pair} */ (pair);
+				})
+			);
+			board.append(...shuffle(cards));
+			newGameButton.classList.add("hidden");
+			bestFitGrid(window.innerWidth / window.innerHeight, cards.length);
+			globalThis.game = game;
+			return game;
+		}
+		globalThis.newGame = newGame;
+		const newGameButton = /**@type {HTMLButtonElement}*/(document.getElementById("newgame"));
+		// newGame();
+		newGameButton.addEventListener("click", () => { mainMenu.showModal(); });
+
+		board.addEventListener("click", (event) => {
+			if (!(event.target instanceof HTMLElement)) return;
+			const card = event.target.closest("card-flip");
+			if (!(card instanceof CardFlip)) return;
+			event.stopPropagation();
+			globalThis.game.reveal(card);
+		});
+
+		function bestFitGrid(aspectRatio, numCells) {
+			let columns = 1, rows = 1;
+			while (columns * rows < numCells || columns / rows < aspectRatio) {
+				if (columns / rows > aspectRatio) {
+					rows++;
+				} else {
+					columns++;
+				}
+			}
+			board.style.setProperty("--columns", "" + columns);
+		}
+
+		const mainMenu = /** @type {HTMLDialogElement}*/(document.getElementById("mainmenu"));
+		mainMenu.showModal();
+	</script>
+	<template id="card-flip-template">
+		<style>
+			:host {
+				display: block;
+				width: 3em;
+				height: 3em;
+				container-type: size;
+			}
+
+			div {
+				width: 100%;
+				height: 100%;
+				border-radius: inherit;
+			}
+
+			#perspective {
+				perspective: 600cqh;
+			}
+
+			#lift,
+			#flip {
+				transform-style: preserve-3d;
+			}
+
+			#front,
+			#back {
+				display: flex;
+				flex-flow: row wrap;
+				position: absolute;
+				backface-visibility: hidden;
+				overflow: auto;
+				box-sizing: border-box;
+				padding: 10cqh;
+				background: white;
+				border: 2cqh solid black;
+				place-content: center;
+			}
+
+			/* "Backface: hidden" shadow is (correctly) invisible on Chrome.
+			 * Firefox drop-shadow displays artefacting when animated on the parent elements instead.
+			 */
+			#front {
+				backface-visibility: visible;
+				translate: 0 0 0.1px;
+			}
+
+			#back {
+				rotate: y 0.5turn;
+			}
+		</style>
+		<div id="perspective">
+			<div id="lift">
+				<div id="flip">
+					<div part="card front" id="front">
+						<slot name="front"></slot>
+					</div>
+					<div part="card back" id="back">
+						<slot></slot>
+					</div>
+				</div>
+			</div>
+		</div>
+	</template>
+</head>
+<body>
+	<noscript style="text-align: center; color: white; font-size: 8vh;">The memory game needs Javascript enabled.</noscript>
+	<div id="memory">
+	</div>
+	<button id="newgame" class="hidden">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92.2 122.88" fill="currentColor">
+			<polygon points="92.2,60.97 0,122.88 0,0 92.2,60.97"/>
+		</svg>
+	</button>
+	<dialog id="mainmenu">
+		<form method="dialog">
+			<button onclick="newGame(4)">👶</button>
+			<button onclick="newGame(6)">😀</button>
+			<button onclick="newGame(9)">🤔</button>
+			<button onclick="newGame(12)">😎</button>
+			<button onclick="newGame(Infinity)">😈</button>
+		</form>
+	</dialog>
+</body>
+</html>
